@@ -19,7 +19,7 @@ int linesCompleted = 0;
 /******************
 *  Input Buffer  *
 ******************/
-char inputBuffer[MAX_CHARS * MAX_LINES];
+char inputBuffer[MAX_CHARS * MAX_LINES] = {0};
 int countInput = 0;
 // Index where the input thread will put the next item
 int input_prod_idx = 0;
@@ -32,14 +32,14 @@ pthread_cond_t input_full = PTHREAD_COND_INITIALIZER;
 /******************
 *  Parse Buffer  *
 ******************/
-/* char parseBuffer[MAX_CHARS * MAX_LINES]; */
-/* int countParse = 0; */
-/* // Index where the parse thread will put the next item */
-/* int parse_prod_idx = 0; */
-/* // Index where the output thread will pick up the next item */
-/* int parse_cons_idx = 0; */
-/* pthread_mutex_t mutex_parse = PTHREAD_MUTEX_INITIALIZER; */
-/* pthread_cond_t parse_full = PTHREAD_COND_INITIALIZER; */
+char parseBuffer[MAX_CHARS * MAX_LINES] = {0};
+int countParse = 0;
+// Index where the parse thread will put the next item
+int parse_prod_idx = 0;
+// Index where the output thread will pick up the next item
+int parse_cons_idx = 0;
+pthread_mutex_t mutex_parse = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t parse_full = PTHREAD_COND_INITIALIZER;
 
 /*******************
 *  Output Buffer  *
@@ -75,6 +75,29 @@ void putString(char* stringInput){
     pthread_mutex_unlock(&mutex_input);
 }
 
+/* TODO */
+void putParse(char* stringInput){
+    // Lock the mutex before putting the item in the buffer
+    pthread_mutex_lock(&mutex_parse);
+    /* printf("Inside putstring\n"); */
+
+    // Append the item in the buffer
+    strcpy(parseBuffer, stringInput);
+
+    // Track the number of chars
+    countParse = strlen(stringInput);
+
+    // Update the production index
+    parse_prod_idx = countParse; // TODO Needed?
+
+    // Signal to the consumer that the buffer is no longer empty
+    /* printf("newOutput is true\n"); */
+    pthread_cond_signal(&parse_full);
+
+    // Unlock the mutex
+    pthread_mutex_unlock(&mutex_parse);
+}
+
 /**
     TODO
 
@@ -100,33 +123,80 @@ void *getString(void* stringInput){
 }
 
 /* TODO */
-void getOutput(char* stringInput){
+void getParsed(char* stringInput){
 
-    pthread_mutex_lock(&mutex_input); //TODO change as we add buffers
+    pthread_mutex_lock(&mutex_input); 
     
-    while (countInput == 0){ //TODO change as we add buffers
-        pthread_cond_wait(&input_full, &mutex_input);//TODO change as we add buffers
+    while (countInput == 0){ 
+        pthread_cond_wait(&input_full, &mutex_input);
     }
 
-    strncpy(stringInput, inputBuffer, input_prod_idx);
+    strncpy(stringInput, inputBuffer, input_prod_idx); 
   
     pthread_mutex_unlock(&mutex_input);
 }
+
+/* TODO */
+void getOutput(char* stringInput){
+
+    pthread_mutex_lock(&mutex_parse); //TODO change as we add buffers
+    
+    while (countParse == 0){ //TODO change as we add buffers
+        pthread_cond_wait(&parse_full, &mutex_parse);//TODO change as we add buffers
+    }
+
+    strncpy(stringInput, parseBuffer, parse_prod_idx); //TODO change as we add buffers
+  
+    pthread_mutex_unlock(&mutex_parse);
+}
+
+/* TODO */
+void replaceHelper(char* stringInput, int length){
+    for (int i = 0; i < length; ++i) {
+        if(stringInput[i] == '\n'){
+            stringInput[i] = ' ';
+        }
+    }
+}
+
+/* TODO */
+void* replaceSeparator(){
+    char stringInput[MAX_CHARS * MAX_LINES] = {0};
+    while (1) {
+        getParsed(stringInput);
+
+        char* stop = strstr(stringInput, "STOP\n");
+
+        if (stop != NULL){
+            replaceHelper(stringInput, strlen(stringInput) - 1);
+        } else {
+            replaceHelper(stringInput, strlen(stringInput));
+        }
+
+        putParse(stringInput);
+        
+        if (stop){
+            return NULL;
+        }
+    }
+    return NULL;
+}
+
 /**
 
 	param: const char* -> TODO
 	post:  the string passed in is replaced with new one, with expanded '$$'
  */
 void displayHelper(char* stringInput, int charSkip){
-    while (((strlen(stringInput) - charSkip) - input_cons_idx) >=  80){ // TODO change as we add buffers
+    while (((strlen(stringInput) - charSkip) - parse_cons_idx) >=  80){ // TODO change as we add buffers
 
-        int end = input_cons_idx + 80; // TODO change as we add buffers
+        int end = parse_cons_idx + 80; // TODO change as we add buffers
 
-        for (int i = input_cons_idx; i < end; ++i) {
+        for (int i = parse_cons_idx; i < end; ++i) {
             printf("%c", stringInput[i]);
             fflush(stdout);
         }
-        input_cons_idx = end;
+        parse_cons_idx = end;
         printf("\n");
         fflush(stdout);
     }

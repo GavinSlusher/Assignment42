@@ -19,7 +19,7 @@ int main(int argc, const char * argv[]) {
     pthread_create(&input_t, NULL, getString, line);
 
     // Replace every line separator with a space
-    /* pthread_create(&parse_t, NULL, replaceSeparator, NULL); */
+    pthread_create(&parse_t, NULL, replaceSeparator, NULL);
 
     // Replace every pair of plus signs
     /* pthread_create(&replacePlus_t, NULL, replacePlus, NULL); */
@@ -29,7 +29,7 @@ int main(int argc, const char * argv[]) {
 
     // Wait for the threads to terminate
     pthread_join(input_t, NULL);
-    /* pthread_join(parse_t, NULL); */
+    pthread_join(parse_t, NULL);
     /* pthread_join(replacePlus_t, NULL); */
     pthread_join(output_t, NULL);
 
