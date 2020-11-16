@@ -44,13 +44,13 @@ pthread_cond_t parse_full = PTHREAD_COND_INITIALIZER;
 /*******************
 *  Output Buffer  *
 *******************/
-/* char outputBuffer[MAX_CHARS * MAX_LINES]; */
-/* int countOutput = 0; */
-/* int output_prod_idx = 0; */
-/* int output_cons_idx = 0; */
+char outputBuffer[MAX_CHARS * MAX_LINES] = {0};
+int countOutput = 0;
+int output_prod_idx = 0;
+int output_cons_idx = 0;
 bool newOutput = false;
-/* pthread_mutex_t mutex_output = PTHREAD_MUTEX_INITIALIZER; */
-/* pthread_cond_t output_full = PTHREAD_COND_INITIALIZER; */
+pthread_mutex_t mutex_output = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t output_full = PTHREAD_COND_INITIALIZER;
 
 /* TODO */
 void putString(char* stringInput){
@@ -98,6 +98,28 @@ void putParse(char* stringInput){
     pthread_mutex_unlock(&mutex_parse);
 }
 
+/* TODO */
+void putOutput(char* stringInput){
+    // Lock the mutex before putting the item in the buffer
+    pthread_mutex_lock(&mutex_output);
+    /* printf("Inside putstring\n"); */
+
+    // Append the item in the buffer
+    strcpy(outputBuffer, stringInput);
+
+    // Track the number of chars
+    countOutput = strlen(stringInput);
+
+    // Update the production index
+    output_prod_idx = countOutput; // TODO Needed?
+
+    // Signal to the consumer that the buffer is no longer empty
+    /* printf("newOutput is true\n"); */
+    pthread_cond_signal(&output_full);
+
+    // Unlock the mutex
+    pthread_mutex_unlock(&mutex_output);
+}
 /**
     TODO
 
@@ -139,15 +161,15 @@ void getParsed(char* stringInput){
 /* TODO */
 void getOutput(char* stringInput){
 
-    pthread_mutex_lock(&mutex_parse); //TODO change as we add buffers
+    pthread_mutex_lock(&mutex_output); //TODO change as we add buffers
     
-    while (countParse == 0){ //TODO change as we add buffers
-        pthread_cond_wait(&parse_full, &mutex_parse);//TODO change as we add buffers
+    while (countOutput == 0){ //TODO change as we add buffers
+        pthread_cond_wait(&output_full, &mutex_output);//TODO change as we add buffers
     }
 
-    strncpy(stringInput, parseBuffer, parse_prod_idx); //TODO change as we add buffers
+    strncpy(stringInput, outputBuffer, output_prod_idx); //TODO change as we add buffers
   
-    pthread_mutex_unlock(&mutex_parse);
+    pthread_mutex_unlock(&mutex_output);
 }
 
 /* TODO */
@@ -182,6 +204,93 @@ void* replaceSeparator(){
     return NULL;
 }
 
+/**
+    Replace string method replaces any instance of a substring with a
+    replacement string.
+
+    pre: The original string must be big enough to old any replacing 
+	param: char* -> The old string to replace
+	param: const char* -> The substring to search for
+	param: const char* -> the replacement string to subsitute into the old string
+	post: The old string is replaced
+
+    sources: 
+- https://stackoverflow.com/questions/32413667/replace-all-occurrences-of-a-substring-in-a-string-in-c
+- https://stackoverflow.com/questions/35595389/efficiently-replace-a-substring-in-a-string
+- http://www.cplusplus.com/reference/cstring/strstr/
+
+ */
+void replaceString(char* oldString, const char* subString, const char* replacement){
+    int replacementLength = strlen(replacement);
+    int subStringLength = strlen(subString);
+
+    char buffer[MAX_CHARS] = {0};
+    char *insert_point = &buffer[0];
+    const char *temp = oldString;
+
+    while (1){
+        /* Find the next occurance of the substring in the oldString */
+        const char *occurance = strstr(temp, subString);
+
+        if (occurance == NULL){ // no more occurances
+            strcpy(insert_point, temp); //copy the rest of the old string
+            break;
+        }
+
+        /* Copy everything up to the substring into our buffer*/
+        memcpy(insert_point, temp, occurance - temp);
+        insert_point += occurance - temp;
+
+
+        /* insert the substring into the buffer */
+        memcpy(insert_point, replacement, replacementLength);
+        insert_point += replacementLength;
+
+        /* move the pointer up the string */
+        temp = occurance + subStringLength;
+    }
+
+    /* copy what was in our buffer back into the oldString */
+    strcpy(oldString, buffer);
+}
+
+
+/* TODO */
+void getPlus(char* stringInput){
+
+    pthread_mutex_lock(&mutex_parse); 
+    
+    while (countParse == 0){ 
+        pthread_cond_wait(&parse_full, &mutex_parse);
+    }
+    
+    strncpy(stringInput, parseBuffer, parse_prod_idx); //TODO change as we add buffers
+    
+    pthread_mutex_unlock(&mutex_parse);
+}
+
+void* replacePlus(){
+    char stringInput[MAX_CHARS * MAX_LINES] = {0};
+
+    while (1) {
+        getPlus(stringInput);
+        
+        char* stop = strstr(stringInput, "STOP\n");
+
+        char replacement[2] = "^";
+        char subString[] = "++";
+
+        if(strstr(stringInput, subString) != NULL){
+            replaceString(stringInput, subString, replacement);
+        }
+
+        putOutput(stringInput);
+
+        if (stop){
+            return NULL;
+        }
+    }
+}
 /**
 
 	param: const char* -> TODO
