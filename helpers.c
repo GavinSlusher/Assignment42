@@ -65,14 +65,9 @@ void putString(char* stringInput){
     countInput += strlen(stringInput);
 
     // Update the production index
-    /* if (strcmp(stringInput, "STOP\n") != 0){ */
-        // Leave the prod idx where it is if we need to stop so that we have a
-        // marker for the last stop lines
-        input_prod_idx = countInput; // TODO update when we expand?
-    /* } */
+    input_prod_idx = countInput; // TODO Needed?
 
     // Signal to the consumer that the buffer is no longer empty
-    /* newOutput = true; */
     /* printf("newOutput is true\n"); */
     pthread_cond_signal(&input_full);
 
@@ -117,6 +112,25 @@ void getOutput(char* stringInput){
   
     pthread_mutex_unlock(&mutex_input);
 }
+/**
+
+	param: const char* -> TODO
+	post:  the string passed in is replaced with new one, with expanded '$$'
+ */
+void displayHelper(char* stringInput, int charSkip){
+    while (((strlen(stringInput) - charSkip) - input_cons_idx) >=  80){ // TODO change as we add buffers
+
+        int end = input_cons_idx + 80; // TODO change as we add buffers
+
+        for (int i = input_cons_idx; i < end; ++i) {
+            printf("%c", stringInput[i]);
+            fflush(stdout);
+        }
+        input_cons_idx = end;
+        printf("\n");
+        fflush(stdout);
+    }
+}
 
 /**
 
@@ -130,44 +144,11 @@ void* displayOutput(){
         getOutput(stringInput);
 
         if (strstr(stringInput, "STOP\n") != NULL){
-        
-            printf("input_prod_idx %d\n", input_prod_idx);
-            printf("input_cons_idx %d\n", input_cons_idx);
-            /* while ((input_prod_idx - input_cons_idx) >=  80){ // TODO change as we add buffers */
-            while (((strlen(stringInput) - 5) - input_cons_idx) >=  80){ // TODO change as we add buffers
+            displayHelper(stringInput, 5);
 
-                int end = input_cons_idx + 80; // TODO change as we add buffers
-
-                for (int i = input_cons_idx; i < end; ++i) {
-                    printf("%c", stringInput[i]);
-                    fflush(stdout);
-                }
-                input_cons_idx = end;
-                printf("\n");
-                fflush(stdout);
-
-                /* printf("Stop while\n"); */
-            }
-
-            /* printf("display return\n"); */
             return NULL;
         }
-
-        while ((strlen(stringInput) - input_cons_idx) >=  80){ // TODO change as we add buffers
-
-            int end = input_cons_idx + 80; // TODO change as we add buffers
-
-            for (int i = input_cons_idx; i < end; ++i) {
-                printf("%c", stringInput[i]);
-                fflush(stdout);
-            }
-            input_cons_idx = end;
-            printf("\n");
-            fflush(stdout);
-        }
-        
-        /* newOutput = false; */
-        /* printf("newOutput is false\n"); */
+        displayHelper(stringInput, 0);
     }
-    /* return NULL; */
+    return NULL;
 }
