@@ -3,7 +3,8 @@
 *
 * Author:           Gavin Slusher  
 * Created:          2020-10-20
-* Description:      
+* Description:      Main file for Assignment 4's multithreaded 
+*                   producer, consumer pipeline
 *****************************************************************************/
 #include <stdio.h>
 #include <string.h>

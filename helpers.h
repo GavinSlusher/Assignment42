@@ -2,8 +2,9 @@
 * File:             helpers.c
 *
 * Author:           Gavin Slusher  
-* Created:          09/28/20 
-* Description:     
+* Created:          2020-11-16
+* Description:      Specification for Assignment 4's multithreaded 
+*                   producer, consumer pipeline
 *****************************************************************************/
 #include <pthread.h>
 #ifndef HELPERS_H

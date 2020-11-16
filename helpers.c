@@ -2,8 +2,9 @@
 * File:             helpers.c
 *
 * Author:           Gavin Slusher  
-* Created:          09/28/20 
-* Description:     
+* Created:          2020-11-16
+* Description:      Implementation for Assignment 4's multithreaded 
+*                   producer, consumer pipeline
 *****************************************************************************/
 #include "helpers.h"
 #include <stdio.h>
@@ -52,7 +53,13 @@ bool newOutput = false;
 pthread_mutex_t mutex_output = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t output_full = PTHREAD_COND_INITIALIZER;
 
-/* TODO */
+/**
+    Takes a string and concatenates it into the string buffer. Also signals
+    to the string buffer getter that the input now has somthing in it.
+
+	param: char* -> A string buffer
+    post: buffer holds the string input 
+ */
 void putString(char* stringInput){
     // Lock the mutex before putting the item in the buffer
     pthread_mutex_lock(&mutex_input);
@@ -65,7 +72,7 @@ void putString(char* stringInput){
     countInput += strlen(stringInput);
 
     // Update the production index
-    input_prod_idx = countInput; // TODO Needed?
+    input_prod_idx = countInput; 
 
     // Signal to the consumer that the buffer is no longer empty
     /* printf("newOutput is true\n"); */
@@ -75,7 +82,13 @@ void putString(char* stringInput){
     pthread_mutex_unlock(&mutex_input);
 }
 
-/* TODO */
+/**
+    Takes a string and copies it into the parse buffer. Also signals
+    to the parse buffer getter that the input now has somthing in it.
+
+	param: char* -> A string buffer
+    post: buffer holds the string input 
+ */
 void putParse(char* stringInput){
     // Lock the mutex before putting the item in the buffer
     pthread_mutex_lock(&mutex_parse);
@@ -98,7 +111,13 @@ void putParse(char* stringInput){
     pthread_mutex_unlock(&mutex_parse);
 }
 
-/* TODO */
+/**
+    Takes a string and copies it into the output buffer. Also signals
+    to the output buffer getter that the input now has somthing in it.
+
+	param: char* -> A string buffer
+    post: buffer holds the string input 
+ */
 void putOutput(char* stringInput){
     // Lock the mutex before putting the item in the buffer
     pthread_mutex_lock(&mutex_output);
@@ -111,7 +130,7 @@ void putOutput(char* stringInput){
     countOutput = strlen(stringInput);
 
     // Update the production index
-    output_prod_idx = countOutput; // TODO Needed?
+    output_prod_idx = countOutput; 
 
     // Signal to the consumer that the buffer is no longer empty
     /* printf("newOutput is true\n"); */
@@ -120,11 +139,11 @@ void putOutput(char* stringInput){
     // Unlock the mutex
     pthread_mutex_unlock(&mutex_output);
 }
+
 /**
-    TODO
+    Gets a string from stdin and puts it into the string buffer
 
 	param: char* -> A string buffer
-	param: int ->The max size of the string desired.
     post: buffer holds the user input 
  */
 void *getString(void* stringInput){
@@ -144,7 +163,13 @@ void *getString(void* stringInput){
     return NULL;
 }
 
-/* TODO */
+/**
+    Takes a string and copies what's in the buffer up to the input_prod_idx
+    into the passed string.
+
+	param: char* -> A string buffer
+    post: stringInput holds buffer contents
+ */
 void getParsed(char* stringInput){
 
     pthread_mutex_lock(&mutex_input); 
@@ -158,21 +183,33 @@ void getParsed(char* stringInput){
     pthread_mutex_unlock(&mutex_input);
 }
 
-/* TODO */
+/**
+    Takes a string and copies what's in the buffer up to the output_prod_idx
+    into the passed string.
+
+	param: char* -> A string buffer
+    post: stringInput holds buffer contents
+ */
 void getOutput(char* stringInput){
 
-    pthread_mutex_lock(&mutex_output); //TODO change as we add buffers
+    pthread_mutex_lock(&mutex_output); 
     
-    while (countOutput == 0){ //TODO change as we add buffers
-        pthread_cond_wait(&output_full, &mutex_output);//TODO change as we add buffers
+    while (countOutput == 0){ 
+        pthread_cond_wait(&output_full, &mutex_output);
     }
 
-    strncpy(stringInput, outputBuffer, output_prod_idx); //TODO change as we add buffers
+    strncpy(stringInput, outputBuffer, output_prod_idx); 
   
     pthread_mutex_unlock(&mutex_output);
 }
 
-/* TODO */
+/**
+    Takes a string and replaces its line seperators up to a given point
+
+	param: char* -> A string buffer
+	param: int -> length in which to check and replace for line seperators
+    post: stringInput has line seperators replaced
+ */
 void replaceHelper(char* stringInput, int length){
     for (int i = 0; i < length; ++i) {
         if(stringInput[i] == '\n'){
@@ -181,7 +218,11 @@ void replaceHelper(char* stringInput, int length){
     }
 }
 
-/* TODO */
+/**
+    Replaces seperators in the input buffer up to a STOP signal
+
+    post: parse buffer contains parsed stringInput
+ */
 void* replaceSeparator(){
     char stringInput[MAX_CHARS * MAX_LINES] = {0};
     while (1) {
@@ -255,7 +296,13 @@ void replaceString(char* oldString, const char* subString, const char* replaceme
 }
 
 
-/* TODO */
+/**
+    Takes a string and copies what's in the buffer up to the parse_prod_idx
+    into the passed string.
+
+	param: char* -> A string buffer
+    post: stringInput holds buffer contents
+ */
 void getPlus(char* stringInput){
 
     pthread_mutex_lock(&mutex_parse); 
@@ -264,11 +311,17 @@ void getPlus(char* stringInput){
         pthread_cond_wait(&parse_full, &mutex_parse);
     }
     
-    strncpy(stringInput, parseBuffer, parse_prod_idx); //TODO change as we add buffers
+    strncpy(stringInput, parseBuffer, parse_prod_idx); 
     
     pthread_mutex_unlock(&mutex_parse);
 }
 
+/**
+    Replaces all instances of "++" with "^" in the parse buffer up to a 
+    STOP signal
+
+    post: output buffer contains replaced stringInput
+ */
 void* replacePlus(){
     char stringInput[MAX_CHARS * MAX_LINES] = {0};
 
@@ -292,9 +345,11 @@ void* replacePlus(){
     }
 }
 /**
+    Prints the stringInput as lines of exactly 80 chars, if possible. Relies
+    on global variables in the implementation of the thread
 
-	param: const char* -> TODO
-	post:  the string passed in is replaced with new one, with expanded '$$'
+	param: char* -> a string to print character by character
+	param: int -> number of characters at the end to potentially skip
  */
 void displayHelper(char* stringInput, int charSkip){
     while (((strlen(stringInput) - charSkip) - parse_cons_idx) >=  80){ // TODO change as we add buffers
@@ -312,9 +367,9 @@ void displayHelper(char* stringInput, int charSkip){
 }
 
 /**
-
-	param: const char* -> TODO
-	post:  the string passed in is replaced with new one, with expanded '$$'
+    Prints the stringInput as lines of exactly 80 chars, if possible. Relies
+    on global variables in the implementation of the thread. Stops if stop
+    signal sent to the output buffer
  */
 void* displayOutput(){
     char stringInput[MAX_CHARS * MAX_LINES] = {0};
