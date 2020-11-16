@@ -63,16 +63,17 @@ void putString(char* stringInput){
 
     // Track the number of chars
     countInput += strlen(stringInput);
-    newOutput = true;
 
     // Update the production index
-    if (strcmp(stringInput, "STOP\n") != 0){
+    /* if (strcmp(stringInput, "STOP\n") != 0){ */
         // Leave the prod idx where it is if we need to stop so that we have a
         // marker for the last stop lines
         input_prod_idx = countInput; // TODO update when we expand?
-    }
+    /* } */
 
     // Signal to the consumer that the buffer is no longer empty
+    /* newOutput = true; */
+    /* printf("newOutput is true\n"); */
     pthread_cond_signal(&input_full);
 
     // Unlock the mutex
@@ -94,6 +95,8 @@ void *getString(void* stringInput){
         putString(stringInput);
 
         if (strcmp(stringInput, "STOP\n") == 0){
+            /* printf("getString return\n"); */
+            fflush(stdout);
             return NULL;
         } 
     }
@@ -106,11 +109,11 @@ void getOutput(char* stringInput){
 
     pthread_mutex_lock(&mutex_input); //TODO change as we add buffers
     
-    while (newOutput == false){
+    while (countInput == 0){ //TODO change as we add buffers
         pthread_cond_wait(&input_full, &mutex_input);//TODO change as we add buffers
     }
 
-    strcpy(stringInput, inputBuffer);
+    strncpy(stringInput, inputBuffer, input_prod_idx);
   
     pthread_mutex_unlock(&mutex_input);
 }
@@ -128,35 +131,43 @@ void* displayOutput(){
 
         if (strstr(stringInput, "STOP\n") != NULL){
         
-            while ((input_prod_idx - input_cons_idx) >=  80){ // TODO change as we add buffers
+            printf("input_prod_idx %d\n", input_prod_idx);
+            printf("input_cons_idx %d\n", input_cons_idx);
+            /* while ((input_prod_idx - input_cons_idx) >=  80){ // TODO change as we add buffers */
+            while (((strlen(stringInput) - 5) - input_cons_idx) >=  80){ // TODO change as we add buffers
 
                 int end = input_cons_idx + 80; // TODO change as we add buffers
 
                 for (int i = input_cons_idx; i < end; ++i) {
                     printf("%c", stringInput[i]);
+                    fflush(stdout);
                 }
                 input_cons_idx = end;
                 printf("\n");
                 fflush(stdout);
+
+                /* printf("Stop while\n"); */
             }
 
-            newOutput = false;
+            /* printf("display return\n"); */
             return NULL;
         }
 
-        while ((countInput - input_cons_idx) >=  80){ // TODO change as we add buffers
+        while ((strlen(stringInput) - input_cons_idx) >=  80){ // TODO change as we add buffers
 
             int end = input_cons_idx + 80; // TODO change as we add buffers
 
             for (int i = input_cons_idx; i < end; ++i) {
                 printf("%c", stringInput[i]);
+                fflush(stdout);
             }
             input_cons_idx = end;
             printf("\n");
             fflush(stdout);
         }
         
-        newOutput = false;
+        /* newOutput = false; */
+        /* printf("newOutput is false\n"); */
     }
-    return NULL;
+    /* return NULL; */
 }
